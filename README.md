@@ -19,9 +19,8 @@ Follow the steps below to build:
 4. Build by running "cmake --build . -v -j8"
 5. Check out the binary freertosDemo.axf in cmk_build folder.
 
-The configuration parameters for the FVP:
+To run the demo:
 ```
--C bp.secure_memory=false -C bp.terminal_0.mode=raw -C bp.refcounter.non_arch_start_at_default=1 -C cluster0.gicv3.FIQEn-RAO=1
+FVP_Base_RevC-2xAEMv8A -C bp.secure_memory=false -C bp.terminal_0.mode=raw -C bp.refcounter.non_arch_start_at_default=1 -C cluster0.gicv3.FIQEn-RAO=1 -a freertosdemo.axf
 ```
-
 
