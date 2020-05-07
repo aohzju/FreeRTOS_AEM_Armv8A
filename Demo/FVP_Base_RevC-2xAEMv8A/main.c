@@ -27,23 +27,6 @@
 
 /******************************************************************************
  *
- * See http://www.FreeRTOS.org/RTOS-Xilinx-UltraScale_MPSoC_64-bit.html for
- * additional information on this demo.
- *
- * NOTE 1:  This project provides two demo applications.  A simple blinky
- * style project, and a more comprehensive test and demo application.  The
- * mainSELECTED_APPLICATION setting in main.c is used to select between the two.
- * See the notes on using mainSELECTED_APPLICATION where it is defined below.
- *
- * NOTE 2:  This file only contains the source code that is not specific to
- * either the simply blinky or full demos - this includes initialisation code
- * and callback functions.
- *
- * NOTE 3:  This project builds the FreeRTOS source code, so is expecting the
- * BSP project to be configured as a 'standalone' bsp project rather than a
- * 'FreeRTOS' bsp project.  However the BSP project MUST still be build with
- * the FREERTOS_BSP symbol defined (-DFREERTOS_BSP must be added to the
- * command line in the BSP configuration).
  */
 
 /* Standard includes. */
@@ -52,22 +35,11 @@
 /* Scheduler include files. */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
+#include "uart.h"
+#include "gicv3.h"
 
-/* Xilinx includes. */
-#include "platform.h"
-#include "xttcps.h"
-#include "xscugic.h"
 
-/* mainSELECTED_APPLICATION is used to select between two demo applications,
- * as described at the top of this file.
- *
- * When mainSELECTED_APPLICATION is set to 0 the simple blinky example will
- * be run.
- *
- * When mainSELECTED_APPLICATION is set to 1 the comprehensive test and demo
- * application will be run.
- */
-#define mainSELECTED_APPLICATION	1
 
 /*-----------------------------------------------------------*/
 
@@ -76,17 +48,6 @@
  */
 static void prvSetupHardware( void );
 
-/*
- * See the comments at the top of this file and above the
- * mainSELECTED_APPLICATION definition.
- */
-#if ( mainSELECTED_APPLICATION == 0 )
-	extern void main_blinky( void );
-#elif ( mainSELECTED_APPLICATION == 1 )
-	extern void main_full( void );
-#else
-	#error Invalid mainSELECTED_APPLICATION setting.  See the comments at the top of this file and above the mainSELECTED_APPLICATION definition.
-#endif
 
 /* Prototypes for the standard FreeRTOS callback/hook functions implemented
 within this file. */
@@ -95,33 +56,26 @@ void vApplicationIdleHook( void );
 void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName );
 void vApplicationTickHook( void );
 
-/*-----------------------------------------------------------*/
 
-/* The interrupt controller is initialised in this file, and made available to
-other modules. */
-XScuGic xInterruptController;
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section("freertos_heap")));
 
-/*-----------------------------------------------------------*/
+extern void demo1();
 
-int main( void )
+int appmain( void )
 {
-	/* See http://www.FreeRTOS.org/RTOS-Xilinx-UltraScale_MPSoC_64-bit.html for
-	additional information on this demo. */
-
 	/* Configure the hardware ready to run the demo. */
 	prvSetupHardware();
 
-	/* The mainSELECTED_APPLICATION setting is described at the top
-	of this file. */
-	#if( mainSELECTED_APPLICATION == 0 )
-	{
-		main_blinky();
-	}
-	#elif( mainSELECTED_APPLICATION == 1 )
-	{
-		main_full();
-	}
-	#endif
+	demo1();
+	/* If all is well, the scheduler will now be running, and the following
+	line will never be reached.  If the following line does execute, then
+	there was either insufficient FreeRTOS heap memory available for the idle
+	and/or timer tasks to be created, or vTaskStartScheduler() was called from
+	User mode.  See the memory management section on the FreeRTOS web site for
+	more details on the FreeRTOS heap http://www.freertos.org/a00111.html.  The
+	mode from which main() is called is set in the C start up code and must be
+	a privileged mode (not user mode). */
+	for( ;; );
 
 	/* Don't expect to reach here. */
 	return 0;
@@ -130,29 +84,21 @@ int main( void )
 
 static void prvSetupHardware( void )
 {
-BaseType_t xStatus;
-XScuGic_Config *pxGICConfig;
-
 	/* Ensure no interrupts execute while the scheduler is in an inconsistent
 	state.  Interrupts are automatically enabled when the scheduler is
 	started. */
 	portDISABLE_INTERRUPTS();
 
-	/* Obtain the configuration of the GIC. */
-	pxGICConfig = XScuGic_LookupConfig( XPAR_SCUGIC_SINGLE_DEVICE_ID );
+	open__stdout(); //Open __stdout, which is a UART
+    gicInit();      //Init and config GIC
 
-	/* Sanity check the FreeRTOSConfig.h settings are correct for the
-	hardware. */
-	configASSERT( pxGICConfig );
-	configASSERT( pxGICConfig->CpuBaseAddress == ( configINTERRUPT_CONTROLLER_BASE_ADDRESS + configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET ) );
-	configASSERT( pxGICConfig->DistBaseAddress == configINTERRUPT_CONTROLLER_BASE_ADDRESS );
 
 	/* Install a default handler for each GIC interrupt. */
-	xStatus = XScuGic_CfgInitialize( &xInterruptController, pxGICConfig, pxGICConfig->CpuBaseAddress );
-	configASSERT( xStatus == XST_SUCCESS );
-	( void ) xStatus; /* Remove compiler warning if configASSERT() is not defined. */
+	//...If any...
 }
 /*-----------------------------------------------------------*/
+
+
 
 void vApplicationMallocFailedHook( void )
 {
@@ -199,13 +145,7 @@ volatile size_t xFreeHeapSpace;
 
 void vApplicationTickHook( void )
 {
-	#if( mainSELECTED_APPLICATION == 1 )
-	{
-		/* Only the comprehensive demo actually uses the tick hook. */
-		extern void vFullDemoTickHook( void );
-		vFullDemoTickHook();
-	}
-	#endif
+
 }
 /*-----------------------------------------------------------*/
 
@@ -261,20 +201,9 @@ static StackType_t uxTimerTaskStack[ configTIMER_TASK_STACK_DEPTH ];
 
 void vMainAssertCalled( const char *pcFileName, uint32_t ulLineNumber )
 {
-	xil_printf( "ASSERT!  Line %lu of file %s\r\n", ulLineNumber, pcFileName );
+	printf( "ASSERT!  Line %lu of file %s\r\n", (unsigned long)ulLineNumber, pcFileName );
 	taskENTER_CRITICAL();
 	for( ;; );
 }
 
-void *____memset(void *str, int c, size_t n)
-{
-size_t x;
-uint8_t *puc = ( uint8_t * ) str;
 
-	for( x = 0; x < c; x++ )
-	{
-		puc[ x ] = ( uint8_t ) c;
-	}
-
-	return str;
-}

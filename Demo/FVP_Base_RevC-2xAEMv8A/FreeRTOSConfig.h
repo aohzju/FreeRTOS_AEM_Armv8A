@@ -28,7 +28,6 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include "xparameters.h"
 
 /*-----------------------------------------------------------
  * Application specific definitions.
@@ -42,43 +41,19 @@
  * See http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
-/*
- * The FreeRTOS Cortex-A port implements a full interrupt nesting model.
- *
- * Interrupts that are assigned a priority at or below
- * configMAX_API_CALL_INTERRUPT_PRIORITY (which counter-intuitively in the ARM
- * generic interrupt controller [GIC] means a priority that has a numerical
- * value above configMAX_API_CALL_INTERRUPT_PRIORITY) can call FreeRTOS safe API
- * functions and will nest.
- *
- * Interrupts that are assigned a priority above
- * configMAX_API_CALL_INTERRUPT_PRIORITY (which in the GIC means a numerical
- * value below configMAX_API_CALL_INTERRUPT_PRIORITY) cannot call any FreeRTOS
- * API functions, will nest, and will not be masked by FreeRTOS critical
- * sections (although it is necessary for interrupts to be globally disabled
- * extremely briefly as the interrupt mask is updated in the GIC).
- *
- * FreeRTOS functions that can be called from an interrupt are those that end in
- * "FromISR".  FreeRTOS maintains a separate interrupt safe API to enable
- * interrupt entry to be shorter, faster, simpler and smaller.
- *
- * For the purpose of setting configMAX_API_CALL_INTERRUPT_PRIORITY 255
- * represents the lowest priority.
- */
-#define configMAX_API_CALL_INTERRUPT_PRIORITY	18
-
-#define configCPU_CLOCK_HZ						100000000UL
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION	1
 #define configUSE_TICKLESS_IDLE					0
-#define configTICK_RATE_HZ						( ( TickType_t ) 1000 )
-#define configPERIPHERAL_CLOCK_HZ  				( 33333000UL )
+#define configTICK_RATE_HZ						( ( TickType_t ) 100 ) //tick period: 10ms
 #define configUSE_PREEMPTION					1
 #define configUSE_IDLE_HOOK						1
 #define configUSE_TICK_HOOK						1
 #define configMAX_PRIORITIES					( 8 )
+
 #define configMINIMAL_STACK_SIZE				( ( unsigned short ) 200 )
-#define configTOTAL_HEAP_SIZE					( 124 * 1024 )
-#define configMAX_TASK_NAME_LEN					( 10 )
+#define configAPPLICATION_ALLOCATED_HEAP		1	//heap range specified in the scatter loading file
+#define configTOTAL_HEAP_SIZE					( 512 * 1024 ) //See the scatter loading file
+
+#define configMAX_TASK_NAME_LEN					( 64 )
 #define configUSE_16_BIT_TICKS					0
 #define configIDLE_SHOULD_YIELD					1
 #define configUSE_MUTEXES						1
@@ -158,26 +133,9 @@ system. */
 
 /****** Hardware specific settings. *******************************************/
 
-/*
- * The application must provide a function that configures a peripheral to
- * create the FreeRTOS tick interrupt, then define configSETUP_TICK_INTERRUPT()
- * in FreeRTOSConfig.h to call the function.  This file contains a function
- * that is suitable for use on the Zynq MPU.  FreeRTOS_Tick_Handler() must
- * be installed as the peripheral's interrupt handler.
- */
-void vConfigureTickInterrupt( void );
-#define configSETUP_TICK_INTERRUPT() vConfigureTickInterrupt()
 
-void vClearTickInterrupt( void );
-#define configCLEAR_TICK_INTERRUPT() vClearTickInterrupt()
 
-/* The following constant describe the hardware, and are correct for the
-Zynq MPU. */
-#define configINTERRUPT_CONTROLLER_BASE_ADDRESS 		( XPAR_PSU_ACPU_GIC_DIST_BASEADDR )
-#define configINTERRUPT_CONTROLLER_CPU_INTERFACE_OFFSET ( XPAR_PSU_ACPU_GIC_BASEADDR - XPAR_PSU_ACPU_GIC_DIST_BASEADDR )
-#define configUNIQUE_INTERRUPT_PRIORITIES				32
-
-#define fabs( x ) __builtin_fabs( x )
+#define configUNIQUE_INTERRUPT_PRIORITIES				32		//the nubmer of priority bits is 5.
 
 #define configUSE_TRACE_FACILITY				0
 
