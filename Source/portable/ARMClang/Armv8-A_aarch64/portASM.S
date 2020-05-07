@@ -39,18 +39,6 @@
 
 	STP 	X2, X3, [SP, #-0x10]!
 
-	/* Save the critical section nesting depth. */
-	//We choose to define portCRITICAL_NESTING_IN_TCB.
-	//LDR		X0, ullCriticalNestingConst
-	//LDR		X3, [X0]
-
-	//We don't support FPU for now
-	//...
-	/* Save the FPU context indicator. */
-
-	/* Save the FPU context, if any (32 128-bit registers). */
-	/* Store the critical nesting count and FPU context indicator. */
-
 	LDR 	X0, =pxCurrentTCB
 	LDR 	X1, [X0]
 	MOV 	X0, SP   /* Move SP into X0 for saving. */
@@ -98,7 +86,8 @@
 	LDP 	X0, X1, [SP], #0x10
 
 	/* Switch to use the ELx stack pointer.  _RB_ Might not be required. */
-	MSR 	SPSEL, #1
+	//Not really required as ERET will copy SPSR to PSTAT, which overwrites SPSEL
+	//MSR 	SPSEL, #1
 
 	ERET
 
@@ -151,23 +140,8 @@ vPortRestoreTaskContext:
 	.global FreeRTOS_FIQ_Handler
 	.type FreeRTOS_FIQ_Handler, @function
 FreeRTOS_FIQ_Handler:
-	/* Save volatile registers. */
-	STP		X0, X1, [SP, #-0x10]!
-	STP		X2, X3, [SP, #-0x10]!
-	STP		X4, X5, [SP, #-0x10]!
-	STP		X6, X7, [SP, #-0x10]!
-	STP		X8, X9, [SP, #-0x10]!
-	STP		X10, X11, [SP, #-0x10]!
-	STP		X12, X13, [SP, #-0x10]!
-	STP		X14, X15, [SP, #-0x10]!
-	STP		X16, X17, [SP, #-0x10]!
-	STP		X18, X19, [SP, #-0x10]!
-	STP		X29, X30, [SP, #-0x10]!
 
-	/* Save the SPSR and ELR. */
-	MRS		X3, SPSR_EL3
-	MRS		X2, ELR_EL3
-	STP 	X2, X3, [SP, #-0x10]!
+	portSAVE_CONTEXT	//Context saved in the interrupted task's stack
 
 	/* Read value from the interrupt acknowledge register, which is stored in W0
 	for future parameter and interrupt clearing use. */
@@ -175,7 +149,7 @@ FreeRTOS_FIQ_Handler:
     MOV     X19, X0
 
 	/* Call the C handler. */
-	BL vApplicationFIQHandler
+	BL vApplicationFIQHandler   //The c hander use SP_EL3 stack pointer
 	MSR   ICC_EOIR0_EL1, X19        //End of interrupt handling
 
 	/* Is a context switch required? */
@@ -187,51 +161,10 @@ FreeRTOS_FIQ_Handler:
 	/* Reset ullPortYieldRequired to 0. */
 	STR		XZR, [X0]
 
-	/* Restore volatile registers. */
-	LDP 	X4, X5, [SP], #0x10  /* SPSR and ELR. */
-	MSR		SPSR_EL3, X5 
-	MSR		ELR_EL3, X4
-	DSB		SY
-	ISB		SY
-
-	LDP		X29, X30, [SP], #0x10
-	LDP		X18, X19, [SP], #0x10
-	LDP		X16, X17, [SP], #0x10
-	LDP		X14, X15, [SP], #0x10
-	LDP		X12, X13, [SP], #0x10
-	LDP		X10, X11, [SP], #0x10
-	LDP		X8, X9, [SP], #0x10
-	LDP		X6, X7, [SP], #0x10
-	LDP		X4, X5, [SP], #0x10
-	LDP		X2, X3, [SP], #0x10
-	LDP		X0, X1, [SP], #0x10
-
-	/* Save the context of the current task and select a new task to run. */
-	portSAVE_CONTEXT
 	BL vTaskSwitchContext
-	portRESTORE_CONTEXT
 
 Exit_FIQ_No_Context_Switch:
-	/* Restore volatile registers. */
-	LDP 	X4, X5, [SP], #0x10  /* SPSR and ELR. */
-	MSR		SPSR_EL3, X5
-	MSR		ELR_EL3, X4
-	DSB		SY
-	ISB		SY
-
-	LDP		X29, X30, [SP], #0x10
-	LDP		X18, X19, [SP], #0x10
-	LDP		X16, X17, [SP], #0x10
-	LDP		X14, X15, [SP], #0x10
-	LDP		X12, X13, [SP], #0x10
-	LDP		X10, X11, [SP], #0x10
-	LDP		X8, X9, [SP], #0x10
-	LDP		X6, X7, [SP], #0x10
-	LDP		X4, X5, [SP], #0x10
-	LDP		X2, X3, [SP], #0x10
-	LDP		X0, X1, [SP], #0x10
-
-	ERET
+	portRESTORE_CONTEXT
 
 	.end
 
