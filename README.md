@@ -7,6 +7,7 @@ Differences from the port GCC\ARM_CA53_64_BIT:
 - A virtual platform is used for demonstration
 - The maximum number of unique task priorities is changed from 32 to 64 (Armv8-A aarch64 platform)
 - System registers are used for GIC CPU interfaces.
+- More concise assembly code
 - CMake scripts used for building. The armclang compiler is used.
 - Removed interrupt nesting support
 
