@@ -22,6 +22,6 @@ Follow the steps below to build:
 
 To run the demo:
 ```
-FVP_Base_RevC-2xAEMv8A -C bp.secure_memory=false -C bp.terminal_0.mode=raw -C bp.refcounter.non_arch_start_at_default=1 -C cluster0.gicv3.FIQEn-RAO=1 -a freertosdemo.axf -C pctl.startup='0.1.*.*, 0.0.*.*'
+FVP_Base_RevC-2xAEMv8A -C bp.secure_memory=false -C bp.terminal_0.mode=raw -C bp.refcounter.non_arch_start_at_default=1 -C cluster0.gicv3.FIQEn-RAO=1 -a freertosdemo.axf 
 ```
 
