@@ -1,5 +1,6 @@
 # FreeRTOS v10.3.1 on ARM fixed virtual platform FVP_Base_RevC-2xAEMv8
 FreeRTOS port for ARM FVP (Fixed Virtual Platform) AEM_Arvm8-A: FVP_Base_RevC-2xAEMv8. The virtual platform is an Armv8-A model with GIC (Generic Interrupt Controller) supported.
+This porting supports single core only.
 
 This port can be adapted for any Armv8-A platform.
 
